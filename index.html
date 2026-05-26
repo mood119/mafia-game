@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>لعبة المافيا الذكية</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============================
+     CHEAT ALERT OVERLAY
+============================ -->
+<div class="cheat-alert" id="cheatAlert">
+  <div style="font-size:64px">🚨</div>
+  <div style="font-size:24px;font-weight:900;color:#f00;text-align:center">تنبيه: تم رصد محاولة غش!</div>
+  <div style="font-size:16px;color:#ff6666;text-align:center">هذه البطاقة مستخدمة بالفعل</div>
+</div>
+
+<!-- ============================
+     ADMIN PANEL OVERLAY
+============================ -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-sheet">
+    <div class="admin-title">🔐 لوحة التحكم السرية</div>
+    <input type="password" inputmode="numeric" maxlength="6" placeholder="أدخل الرمز السري"
+      class="admin-code-input" id="adminCodeInput">
+    <div id="adminActions" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-primary" onclick="adminAction('start')">▶️ بدء اللعبة</button>
+      <button class="btn btn-gold btn-sm" onclick="adminAction('vote')">🗳️ فتح التصويت</button>
+      <div id="adminKickList" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="btn btn-secondary btn-sm" onclick="adminAction('reset')">🔄 إعادة تشغيل</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="closeAdmin()">✕ إغلاق</button>
+  </div>
+</div>
+
+<!-- ============================
+     MAIN APP
+============================ -->
+<div id="app">
+
+  <!-- Header -->
+  <div class="header" id="headerTitle">
+    <div class="header-badge">🎭 MAFIA GAME</div>
+    <h1>لعبة المافيا</h1>
+    <div class="header-sub">النسخة الذكية بدون مشرف</div>
+  </div>
+
+  <!-- ====== SCREEN: JOIN ====== -->
+  <div class="screen active" id="screen-join">
+    <div class="card">
+      <div class="card-title">👤 انضم للعبة</div>
+      <input type="text" class="text-input mb-8" id="playerNameInput"
+        placeholder="اسمك في اللعبة" maxlength="20" autocomplete="off">
+      <button class="btn btn-primary mt-8" id="joinBtn" onclick="joinGame()">
+        🃏 أدخل اللعبة
+      </button>
+    </div>
+
+    <!-- Rules -->
+    <div class="card">
+      <div class="card-title">📖 قوانين اللعبة</div>
+      <div class="rules-box">
+        <div class="rule-item">
+          <span class="rule-emoji">🕵️‍♂️</span>
+          <div class="rule-text"><strong>المافيا:</strong> يستيقظون ليلاً ويصوتون سراً على ضحية. هدفهم السيطرة على المجلس.</div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-emoji">🩺</span>
+          <div class="rule-text"><strong>الطبيب:</strong> يحمي شخصاً كل ليلة. لا يمكنه حماية نفسه مرتين متتاليتين.</div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-emoji">🔍</span>
+          <div class="rule-text"><strong>المحقق:</strong> يكشف هوية لاعب كل ليلة وتحفظ النتائج على شاشته.</div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-emoji">🔫</span>
+          <div class="rule-text"><strong>المقتص:</strong> رصاصة واحدة. أصاب مافيا = ينجو. أخطأ = يموت هو والبريء.</div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-emoji">🃏</span>
+          <div class="rule-text"><strong>الجوكر:</strong> يبدل أدوار لاعبين ليلاً. فوزه الوحيد: أن يُعدَم بالتصويت النهاري!</div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-emoji">👥</span>
+          <div class="rule-text"><strong>المواطن البريء:</strong> لا قوة ليلية، قوته في النقاش والتصويت النهاري.</div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-emoji">🏆</span>
+          <div class="rule-text"><strong>الفوز:</strong> المواطنون يفوزون بقتل كل المافيا. المافيا تفوز حين تساوي أو تتجاوز البقية.</div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-emoji">⏱️</span>
+          <div class="rule-text"><strong>التوقيت:</strong> الليل 35 ثانية. آخر لاعبين لم يصوتا = 30 ثانية. آخر لاعب = 10 ثوانٍ.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SCREEN: LOBBY ====== -->
+  <div class="screen" id="screen-lobby">
+    <div class="card">
+      <div class="flex justify-between items-center mb-8">
+        <div class="card-title mb-0">🎮 غرفة الانتظار</div>
+        <div class="chip" id="playerCountChip">0 لاعبين</div>
+      </div>
+      <div class="player-list" id="lobbyPlayerList"></div>
+    </div>
+    <div class="status-banner banner-info pulse" id="lobbyStatus">
+      في انتظار المالك لبدء اللعبة...
+    </div>
+    <button class="btn btn-secondary" id="readyBtn" onclick="setReady()">
+      ✅ أنا مستعد
+    </button>
+  </div>
+
+  <!-- ====== SCREEN: ROLE REVEAL ====== -->
+  <div class="screen" id="screen-role">
+    <div class="role-card" id="roleCard">
+      <span class="role-icon" id="roleIcon">🃏</span>
+      <div class="role-name" id="roleName"></div>
+      <div class="role-desc" id="roleDesc"></div>
+    </div>
+    <div class="card hidden" id="mafiaTeamCard">
+      <div class="card-title">🤝 فريقك من المافيا</div>
+      <div id="mafiaTeamList" class="player-list"></div>
+    </div>
+    <div class="status-banner banner-warning pulse">
+      ⏳ انتظر... اللعبة ستبدأ قريباً
+    </div>
+  </div>
+
+  <!-- ====== SCREEN: NIGHT ====== -->
+  <div class="screen" id="screen-night">
+    <!-- Night header -->
+    <div class="night-overlay text-center">
+      <span class="night-icon">🌙</span>
+      <div class="night-title" id="nightTitle">ليلة الظلام</div>
+      <div class="text-dim text-sm mt-4" id="nightSubtitle">أغلقوا أعينكم...</div>
+    </div>
+
+    <!-- Timer -->
+    <div class="card">
+      <div class="timer-ring">
+        <div class="timer-circle" id="timerCircle">
+          <svg viewBox="0 0 106 106">
+            <circle cx="53" cy="53" r="50" id="timerRing"
+              stroke-dasharray="314" stroke-dashoffset="0"/>
+          </svg>
+          <span id="timerText">35</span>
+        </div>
+        <div class="timer-label" id="timerLabel">ثانية متبقية</div>
+      </div>
+    </div>
+
+    <!-- Distraction (for citizens) -->
+    <div class="card hidden" id="distractionSection">
+      <div class="card-title">🎭 ابقَ نشطاً</div>
+      <div class="text-sm text-dim mb-8">اضغط الأزرار باستمرار لتشتيت الانتباه</div>
+      <div class="distraction-grid" id="distractionGrid"></div>
+    </div>
+
+    <!-- Mafia action -->
+    <div class="card hidden" id="mafiaSection">
+      <div class="card-title text-red">🔪 اختر ضحيتك</div>
+      <div class="target-list" id="mafiaTargetList"></div>
+      <button class="btn btn-primary mt-12" id="mafiaConfirmBtn" onclick="confirmNightVote()" disabled>
+        ✓ تأكيد الاختيار
+      </button>
+    </div>
+
+    <!-- Doctor action -->
+    <div class="card hidden" id="doctorSection">
+      <div class="card-title text-green">💉 من ستحمي الليلة؟</div>
+      <div class="target-list" id="doctorTargetList"></div>
+      <button class="btn btn-primary mt-12" id="doctorConfirmBtn" onclick="confirmDoctorSave()" disabled>
+        ✓ تأكيد الحماية
+      </button>
+    </div>
+
+    <!-- Detective action -->
+    <div class="card hidden" id="detectiveSection">
+      <div class="card-title text-teal">🔍 من ستحقق معه؟</div>
+      <div class="target-list" id="detectiveTargetList"></div>
+      <button class="btn btn-primary mt-12" id="detectiveConfirmBtn" onclick="confirmInvestigation()" disabled>
+        ✓ ابدأ التحقيق
+      </button>
+      <!-- Previous results -->
+      <div id="detectivePrevResults" class="mt-12 hidden">
+        <div class="card-title">📋 نتائج سابقة</div>
+        <div class="investigation-log" id="investigationLog"></div>
+      </div>
+    </div>
+
+    <!-- Joker action -->
+    <div class="card hidden" id="jokerSection">
+      <div class="card-title text-gold">🃏 اختر لاعبين لتبديل أدوارهم</div>
+      <div class="text-sm text-dim mb-8">الضغط الأول = اللاعب الأول، الضغط الثاني = اللاعب الثاني</div>
+      <div class="target-list" id="jokerTargetList"></div>
+      <div class="flex gap-8 mt-12">
+        <button class="btn btn-gold" id="jokerConfirmBtn" onclick="confirmJokerSwap()" disabled>✓ تبديل</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetJokerSelection()">↺ إعادة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SCREEN: DAY ====== -->
+  <div class="screen" id="screen-day">
+    <div class="card" id="deathAnnouncement" style="display:none">
+      <div class="text-center">
+        <div style="font-size:48px">💀</div>
+        <div class="font-heavy mt-8" id="deathName" style="font-size:20px"></div>
+        <div class="text-dim text-sm mt-4" id="deathRole"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">☀️ مرحلة النهار</div>
+      <div class="text-dim text-sm">ناقشوا وتبادلوا التهم... ثم صوّتوا على من تريدون إعدامه</div>
+    </div>
+
+    <!-- Alive players -->
+    <div class="card">
+      <div class="card-title">👁️ اللاعبون الأحياء</div>
+      <div class="player-list" id="dayPlayerList"></div>
+    </div>
+
+    <!-- Detective results (only for detective) -->
+    <div class="card hidden" id="dayDetectiveCard">
+      <div class="card-title text-teal">📋 نتائج تحقيقاتك</div>
+      <div class="investigation-log" id="dayInvestLog"></div>
+    </div>
+
+    <div class="status-banner banner-info">
+      💬 وقت النقاش — انتظر المالك لفتح التصويت
+    </div>
+  </div>
+
+  <!-- ====== SCREEN: VOTE ====== -->
+  <div class="screen" id="screen-vote">
+    <div class="card">
+      <div class="card-title" id="voteTitle">🗳️ وقت التصويت</div>
+      <div id="voteTimerBanner" class="status-banner banner-warning hidden mt-8 mb-8"></div>
+      
+      <div class="target-list" id="voteTargetList"></div>
+      
+      <button class="btn btn-ghost btn-sm mt-12" onclick="castVote('abstain')">
+        🤐 الامتناع عن التصويت
+      </button>
+    </div>
+
+    <!-- Vote progress -->
+    <div class="card">
+      <div class="card-title">📊 تقدم التصويت</div>
+      <div class="vote-bar"><div class="vote-bar-fill" id="voteBarFill" style="width:0%"></div></div>
+      <div class="vote-count-label" id="voteCountLabel">0 صوتوا</div>
+    </div>
+  </div>
+
+  <!-- ====== SCREEN: ENDED ====== -->
+  <div class="screen" id="screen-ended">
+    <div class="win-screen">
+      <div class="win-icon" id="winIcon"></div>
+      <div class="win-title" id="winTitle"></div>
+      <div class="text-dim" id="winDesc"></div>
+    </div>
+
+    <!-- Full reveal -->
+    <div class="card">
+      <div class="card-title">🔍 كشف الأدوار</div>
+      <div class="player-list" id="revealList"></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
